@@ -1,0 +1,235 @@
+// This is your Prisma schema file for MongoDB
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// ─── USER ──────────────────────────────────────────────────────────────────
+model User {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  email        String        @unique
+  password     String
+  role         Role          @default(USER)
+  coins        Int           @default(0)
+  vipTier      VipTier       @default(BRONZE)
+  kycStatus    KycStatus     @default(NONE)
+  referralCode String        @unique
+  streak       Int           @default(0)
+  claimedDays  Int[]
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  investments  Investment[]
+  transactions Transaction[]
+  kyc          KYC[]
+  gameResults  GameResult[]
+  notifications Notification[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum VipTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+enum KycStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ─── PLAN ─────────────────────────────────────────────────────────────────
+model Plan {
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  risk          Risk
+  returnRate    String
+  returnPercent Float
+  duration      String
+  durationDays  Int
+  minCoins      Int
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  investments   Investment[]
+}
+
+enum Risk {
+  LOW
+  MED
+  HIGH
+}
+
+// ─── INVESTMENT ────────────────────────────────────────────────────────────
+model Investment {
+  id        String           @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String           @db.ObjectId
+  planId    String           @db.ObjectId
+  amount    Int
+  startDate DateTime         @default(now())
+  endDate   DateTime
+  status    InvestmentStatus @default(ACTIVE)
+  createdAt DateTime         @default(now())
+
+  user      User             @relation(fields: [userId], references: [id])
+  plan      Plan             @relation(fields: [planId], references: [id])
+}
+
+enum InvestmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+// ─── TRANSACTION ───────────────────────────────────────────────────────────
+model Transaction {
+  id        String            @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String            @db.ObjectId
+  type      TransactionType
+  amount    Int
+  status    TransactionStatus @default(PENDING)
+  method    String?
+  createdAt DateTime          @default(now())
+
+  user      User              @relation(fields: [userId], references: [id])
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  REWARD
+  GAME_WIN
+}
+
+enum TransactionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ─── KYC ───────────────────────────────────────────────────────────────────
+model KYC {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String    @db.ObjectId
+  documentType String
+  documentUrl  String
+  status       KycStatus @default(PENDING)
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  user         User      @relation(fields: [userId], references: [id])
+}
+
+// ─── GAME RESULT ───────────────────────────────────────────────────────────
+model GameResult {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  gameType  GameType
+  reward    Int
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+enum GameType {
+  SPIN
+  SCRATCH
+  LUCKY_DRAW
+}
+
+// ─── GAME CONFIG ───────────────────────────────────────────────────────────
+model GameConfig {
+  id                   String  @id @default(auto()) @map("_id") @db.ObjectId
+  spinWheelEnabled     Boolean @default(true)
+  scratchCardEnabled   Boolean @default(true)
+  luckyDrawEnabled     Boolean @default(true)
+  spinRewards          Int[]
+  luckyDrawTicketPrice Int     @default(500)
+  luckyDrawPrize       Int     @default(10000)
+  dailySpinLimit       Int     @default(3)
+  dailyScratchLimit    Int     @default(5)
+}
+
+// ─── MISSION ───────────────────────────────────────────────────────────────
+model Mission {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String
+  reward      Int
+  type        MissionType
+  target      Int
+  isActive    Boolean     @default(true)
+}
+
+enum MissionType {
+  DAILY
+  WEEKLY
+  SPECIAL
+}
+
+// ─── NOTIFICATION ──────────────────────────────────────────────────────────
+model Notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String?  @db.ObjectId
+  isBroadcast Boolean @default(false)
+  title     String
+  body      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+// ─── SYSTEM CONFIG ─────────────────────────────────────────────────────────
+model SystemConfig {
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  welcomeBonus Int    @default(1000)
+}
+
+// ─── SHARE / STOCK ─────────────────────────────────────────────────────────
+model Share {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  name       String
+  ticker     String   @unique
+  price      Float
+  change     Float
+  prevPrices Float[]
+  logo       String
+  color      String
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// ─── COIN PACKAGE ─────────────────────────────────────────────────────────
+model CoinPackage {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  coins     Int
+  price     Float
+  desc      String
+  icon      String
+  color     String
+  popular   Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
